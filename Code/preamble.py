@@ -28,7 +28,9 @@ import matplotlib.pyplot as plt # For plotting
 import numpy as np # For fast math
 
 # New way to get pseudorandom numbers
-from numpy.random import SeedSequence, default_rng, Generator, PCG64
+from numpy.random import SeedSequence, default_rng
+
+import numpy.random as rnd
 
 import dill
 
@@ -37,7 +39,11 @@ import abcre
 
 import pandas as pd
 import seaborn as sns
-import pymc3 as pm
+try:
+    import pymc3 as pm
+    import arviz
+except Exception:
+    print("Couldn't load pymc3/arviz")
 
 import subprocess
 import shutil
@@ -94,6 +100,8 @@ def draw_prior(prior, axs):
         elif priorL == 0:
             if priorR == 1 or priorR == 1.0:
                 xlimL = -0.1
+            elif priorR == 2 or priorR == 2.0:
+                xlimL = -0.2
             else:
                 xlimL = -1
         else:

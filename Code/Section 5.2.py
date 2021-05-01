@@ -2,26 +2,27 @@
 # ---
 # jupyter:
 #   jupytext:
+#     comment_magics: false
 #     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.4.2
+#       jupytext_version: 1.10.3
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
 
-# # Section 4.2
+# # Simulation Study
 
-# %run -i ./preamble.py
-# %config InlineBackend.figure_format = 'retina'
-# %load_ext nb_black
+%run -i ./preamble.py
+%config InlineBackend.figure_format = 'retina'
+%load_ext nb_black
 
 # +
-#dill.load_session("Sim_Poisson_Depexp.pkl")
+# dill.load_session("Sim_Poisson_Depexp.pkl")
 
 # +
 import sys
@@ -29,11 +30,12 @@ import sys
 print("Python version:", sys.version)
 print("Numpy version:", np.__version__)
 print("PyMC3 version:", pm.__version__)
+print("Arviz version:", arviz.__version__)
 
 tic()
 
 # +
-FAST = True
+FAST = False
 
 # Processor information and SMC calibration parameters
 if not FAST:
@@ -49,8 +51,8 @@ else:
     epsMin = 1
     timeout = 30
 
-numProcs = 40
-smcArgs = {"numProcs": numProcs, "timeout": timeout, "verbose": True}
+smcArgs = {"timeout": timeout, "verbose": True}
+smcArgs["numProcs"] = 64
 # -
 
 # ## Inference of a Poison- Frequency Dependent Exponential model
@@ -77,7 +79,7 @@ smcArgs = {"numProcs": numProcs, "timeout": timeout, "verbose": True}
 # Our aim is to see if ABC is able to fit this model featuring dependency between claim counts and claim frequency. 
 
 # +
-rg = Generator(PCG64(123))
+rg = default_rng(123)
 
 sample_sizes = [50, 250]
 T = sample_sizes[-1]
@@ -135,7 +137,7 @@ for ss in sample_sizes:
             lam=np.exp(-δ * fullData["N"].values) / β,
             observed=fullData["claim_size"].values,
         )
-        %time trace = pm.sample_smc(popSize, random_seed=134)
+        %time trace = pm.sample_smc(popSize, random_seed=134, chains = 1)
         res = pd.DataFrame(
             {"ss": np.repeat(ss, popSize), "β": trace["β"], "δ": trace["δ"],}
         )
@@ -154,8 +156,8 @@ for ss in sample_sizes:
         λ = pm.Uniform("λ", lower=0, upper=10)
         N = pm.Poisson("N", mu=λ, observed=nData)
 
-        %time trace = pm.sample_smc(popSize, random_seed=1)
-        pm.plot_posterior(trace)
+        %time trace = pm.sample_smc(popSize, random_seed=1, chains = 1)
+        arviz.plot_posterior(trace)
 
     res = pd.DataFrame({"ss": np.repeat(ss, popSize), "λ": trace["λ"]})
     dffreq = pd.concat([dffreq, res])
@@ -212,7 +214,7 @@ for l in range(len(params)):
         axs[l].plot(xs, ys, label="ABC")
 
     axs[l].axvline(θ_True[l], **trueStyle)
-    #axs[l].set_title("$" + params + "$")
+    # axs[l].set_title("$" + params + "$")
     axs[l].set_yticks([])
 
 draw_prior(prior, axs)
@@ -252,7 +254,7 @@ axs[1].set_xlim([0, 5])
 axs[2].set_xlim([0, 0.5])
 
 sns.despine(left=True)
-#save_cropped("../Figures/hist-test2-poisson-depexp-approximate.pdf")
+# save_cropped("../Figures/hist-test2-poisson-depexp-approximate.pdf")
 
 # +
 rg = default_rng(1)
@@ -292,7 +294,7 @@ for l in range(len(params)):
     plt.legend("", frameon=False)
 
 sns.despine()
-#save_cropped("../Figures/boxplot-test2-poisson-depexp.pdf")
+# save_cropped("../Figures/boxplot-test2-poisson-depexp.pdf")
 # -
 
 # ## ABC posterior for the dependent exponential parameters with the claim frequency
@@ -375,11 +377,11 @@ alphas = (0.6, 1)
 
 for l in range(len(params)):
     pLims = [prior.marginals[l].isf(1), prior.marginals[l].isf(0)]
-    
+
     axs[l].axvline(θ_sev[l], **trueStyle)
     axs[l].set_yticks([])
     for k, ss in enumerate(sample_sizes):
-        
+
         for j, df in enumerate((dfABC, dfABC_freq)):
             sampleData = df.query("ss == @ss")
             sample = sampleData[params[l]]
@@ -387,9 +389,9 @@ for l in range(len(params)):
 
             dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
             axs[l].plot(xs, ys, label="ABC", alpha=alphas[j], c=colors[k])
-            
+
             # axs[l].set_title("$" + params[l] + "$")
-            
+
 sns.despine(left=True)
 save_cropped("../Figures/hist-test2-poisson-depexp-both.pdf")
 
@@ -430,7 +432,7 @@ for l in range(len(params)):
     plt.legend("", frameon=False)
 
 sns.despine()
-#save_cropped("../Figures/boxplot-test2-poisson-depexp-freq.pdf")
+# save_cropped("../Figures/boxplot-test2-poisson-depexp-freq.pdf")
 # -
 elapsed = toc()
 print(f"Notebook time = {elapsed:.0f} secs = {elapsed/60:.2f} mins")

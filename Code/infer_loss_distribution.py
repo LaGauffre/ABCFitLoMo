@@ -22,7 +22,7 @@ def infer_weib(sevs, θ0):
         return n * np.log(k) - n * k * np.log(δ) + (k-1) * sum(np.log(sevs)) - sum((sevs / δ)**k)
     
     costFn = lambda θ: -logp(θ)
-    bnds = ((0, None), (0, None))
+    bnds = ((1e-10, None), (1e-10, None))
     
     minRes = minimize(costFn, θ0, bounds=bnds) #, jac = jac, hess=hess)
     
@@ -42,7 +42,7 @@ def infer_gamma(sevs, θ0):
         return - n * np.log(gamma(k)) - n * k * np.log(δ) + (k - 1) * ΣlogSevs - ΣSevs / δ 
      
     costFn = lambda θ: -logp(θ)
-    bnds = ((0, None), (0, None))
+    bnds = ((1e-10, None), (1e-10, None))
     
     minRes = minimize(costFn, θ0, bounds=bnds)
     
@@ -62,7 +62,7 @@ def infer_lnorm(sevs):
     return θHat[0], θHat[1], BIC
 
     
-        
+
 # This function return the mle estimator along with the BIC    
 def infer_loss(sevs, models_sev, θ0 = None):
     # sevs vector op loses
@@ -90,13 +90,13 @@ def infer_loss(sevs, models_sev, θ0 = None):
         res['BF'] = np.exp( (BIC_ref - res.BIC.array) / 2)
         res['model_prob'] = res.BF / res.BF.sum()
         return res
-            
 
 
-#Test
+
+# Test
 # models_sev = ['gamma', 'lognormal', 'weibull']
 # len(models_sev)
-# rg = Generator(PCG64(1))
+# rg = default_rng(1)
 # sev = "weibull"
 # θ = (2, 5)
 # θ0 = [1 , 1]

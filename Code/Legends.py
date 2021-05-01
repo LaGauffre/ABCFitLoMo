@@ -1,21 +1,22 @@
 # ---
 # jupyter:
 #   jupytext:
+#     comment_magics: false
 #     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.10.3
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
 
-# %run -i ./preamble.py
-# %config InlineBackend.figure_format = 'retina'
-# %load_ext nb_black
+%run -i ./preamble.py
+%config InlineBackend.figure_format = 'retina'
+%load_ext nb_black
 
 lw = 3
 plt.rcParams["legend.columnspacing"] = 0.5
@@ -61,7 +62,9 @@ save_legend(
 )
 
 save_legend(
-    labelsSS + ["True"], linesSS + [trueLine], "legend-sample-sizes.pdf",
+    labelsSS + ["True"],
+    linesSS + [trueLine],
+    "legend-sample-sizes.pdf",
 )
 
 save_legend(
@@ -79,16 +82,22 @@ save_legend(
 
 # +
 save_legend(
-    ["Prior"] + labelsSS, [priorLine] + linesSS, "legend-sample-sizes-prior-mle-1.pdf",
+    ["Prior"] + labelsSS,
+    [priorLine] + linesSS,
+    "legend-sample-sizes-prior-mle-1.pdf",
 )
 
 save_legend(
-    ["True", "MLE"], [trueLine, mleLine], "legend-sample-sizes-prior-mle-2.pdf",
+    ["True", "MLE"],
+    [trueLine, mleLine],
+    "legend-sample-sizes-prior-mle-2.pdf",
 )
 # -
 
 save_legend(
-    labelsSS + ["MLE"], linesSS + [mleLine], "legend-sample-sizes-mle.pdf",
+    labelsSS + ["MLE"],
+    linesSS + [mleLine],
+    "legend-sample-sizes-mle.pdf",
 )
 
 # +
@@ -134,8 +143,48 @@ ax.legend(lines, labels, ncol=3, frameon=False)
 plt.axis("off")
 save_cropped("../Figures/legend-sample-sizes-mle-both.pdf")
 # +
+labelsDistances = ["$\gamma = \infty$", "$\gamma = \gamma^*$", "$\gamma = 0$"]
+linesDistances = [
+    Line2D([np.NaN], [np.NaN], c=c, lw=lw) for c in colors[: len(labelsDistances)]
+]
+
 save_legend(
-    labelsModel, linesModel, "legend-models.pdf",
+    ["Prior"] + labelsDistances + ["True"],
+    [priorLine] + linesDistances + [trueLine],
+    "legend-distances.pdf",
+)
+
+
+# +
+labelsPost = ["$\epsilon = 50$", "$\epsilon = 25$", "$\epsilon = 10$"]
+linesPost = [
+    Line2D([np.NaN], [np.NaN], c=c, lw=lw) for c in colors[: len(labelsDistances)]
+]
+
+save_legend(
+    ["Prior"] + labelsPost,
+    [priorLine] + linesPost,
+    "legend-smc-intro.pdf",
+)
+
+# +
+labelsCyclical = ["Expected value for $x_s$", "Observed $x_s$"]
+linesCyclical = [
+    Line2D([np.NaN], [np.NaN], c="k", lw=lw),
+    Line2D([np.NaN], [np.NaN], c=colors[0], lw=0, marker="o"),
+]
+
+save_legend(
+    labelsCyclical,
+    linesCyclical,
+    "legend-cyclical.pdf",
+)
+
+# +
+save_legend(
+    labelsModel,
+    linesModel,
+    "legend-models.pdf",
 )
 
 # fig, ax = plt.subplots(figsize=(0.1, 0.1))
@@ -146,11 +195,15 @@ save_legend(
 # -
 
 save_legend(
-    labelsPrior, linesPrior, "legend-priors.pdf",
+    labelsPrior,
+    linesPrior,
+    "legend-priors.pdf",
 )
 
 save_legend(
-    labelsPrior + ["MLE"], linesPrior + [mleLine], "legend-priors-mle.pdf",
+    labelsPrior + ["MLE"],
+    linesPrior + [mleLine],
+    "legend-priors-mle.pdf",
 )
 
 # +

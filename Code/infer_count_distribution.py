@@ -32,7 +32,7 @@ def infer_pois(freqs, α, β):
     BIC = - 2 * logp(λ_map) + np.log(n)
     return posterior_sample, log_margin, λ_map, BIC
 #test
-# rg = Generator(PCG64(5))
+# rg = default_rng(5)
 # λ = 300
 # freqs = rg.poisson(λ, size=100)
 # np.mean(freqs)
@@ -73,7 +73,7 @@ def infer_nbinom(freqs, a, b, max_α, size_post_sample):
     return posterior_sample, log_margin,(α_star, p_map), BIC
 
 #Test
-# rg = Generator(PCG64(5))
+# rg = default_rng(5)
 # α = 3 
 # p = 0.23
 # freqs = rg.negative_binomial(α, p, size=10)
