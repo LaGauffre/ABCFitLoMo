@@ -1,10 +1,31 @@
-# ABCFitLoMo
-Online accompaniement (mainly python code) of the paper entitled "Approximate Bayesian Computations to fit and compare insurance loss models"
+# Online accompaniement for the paper "[Approximate Bayesian Computations to fit and compare insurance loss models](https://arxiv.org/abs/2007.03833)"
 
-All the plots and picture of our paper are in the Figures folder
+The Code folder contains the Jupyter notebooks for the examples given in the paper.
+Each notebook is named after the corresponding section of the paper.
+Inside Code, there is also the version of our Python package [abcre](https://github.com/Pat-Laub/abcre) which was used at the time of writing the paper.
+All the generated plots in our paper are in the Figures folder.
 
-The Code folder contains the python package in the abcre folder and the python notebooks are named after each section of the paper and allows to reproduce the various plots. 
+To run the notebooks, we recommend using [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) to install the dependencies. 
 
-You must install python via anaconda, and instal some usual library like numpy, scipy and pandas.
+To install the packages required for the `abcre` library, use:
 
-You need to install the pymc3 library directly from github, beware since the SMC routines are still under active development the computation of model probabilities via pymc3 can be outdated.
+```bash
+conda install joblib matplotlib numba numpy psutil scipy
+pip install fastprogress hilbertcurve
+```
+
+Extra packages used in these notebooks are:
+
+```bash
+conda install arviz dill pandas pymc3 seaborn
+pip install black nb_black pdfCropMargins ttictoc
+```
+
+Conda prefers you to run one big install as opposed to multiple installs back-to-back since it can get all the compatible versions in one hit. So, to setup a fresh machine to run these notebooks (and to install Jupyter itself) use:
+
+```
+conda install arviz dill joblib matplotlib numba numpy jupyterlab pandas psutil pymc3 scipy seaborn 
+pip install black fastprogress nb_black hilbertcurve pdfCropMargins ttictoc
+```
+
+PyMC3 has breaking changes to its interface on nearly every version update, so the notebooks have a cell near the top which prints out the version of PyMC3 which we used.
