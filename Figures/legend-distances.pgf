@@ -6,12 +6,6 @@
 %% Make sure the required packages are loaded in your preamble
 %%   \usepackage{pgf}
 %%
-%% and, on pdftex
-%%   \usepackage[utf8]{inputenc}\DeclareUnicodeCharacter{2212}{-}
-%%
-%% or, on luatex and xetex
-%%   \usepackage{unicode-math}
-%%
 %% Figures using additional raster images can only be included by \input if
 %% they are in the same directory as the main LaTeX file. For loading figures
 %% from other directories you can use the `import` package
@@ -22,14 +16,14 @@
 %%
 %% Matplotlib used the following preamble
 %%   \usepackage{fontspec}
-%%   \setmainfont{DejaVuSerif.ttf}[Path=/home/plaub/miniconda3/lib/python3.8/site-packages/matplotlib/mpl-data/fonts/ttf/]
-%%   \setsansfont{DejaVuSans.ttf}[Path=/home/plaub/miniconda3/lib/python3.8/site-packages/matplotlib/mpl-data/fonts/ttf/]
-%%   \setmonofont{DejaVuSansMono.ttf}[Path=/home/plaub/miniconda3/lib/python3.8/site-packages/matplotlib/mpl-data/fonts/ttf/]
+%%   \setmainfont{DejaVuSerif.ttf}[Path=\detokenize{C:/Users/patri/miniconda3/Lib/site-packages/matplotlib/mpl-data/fonts/ttf/}]
+%%   \setsansfont{DejaVuSans.ttf}[Path=\detokenize{C:/Users/patri/miniconda3/Lib/site-packages/matplotlib/mpl-data/fonts/ttf/}]
+%%   \setmonofont{DejaVuSansMono.ttf}[Path=\detokenize{C:/Users/patri/miniconda3/Lib/site-packages/matplotlib/mpl-data/fonts/ttf/}]
 %%
 \begingroup%
 \makeatletter%
 \begin{pgfpicture}%
-\pgfpathrectangle{\pgfpointorigin}{\pgfqpoint{4.439114in}{0.314968in}}%
+\pgfpathrectangle{\pgfpointorigin}{\pgfqpoint{4.233955in}{0.314968in}}%
 \pgfusepath{use as bounding box, clip}%
 \begin{pgfscope}%
 \pgfsetbuttcap%
@@ -40,8 +34,8 @@
 \pgfsetstrokeopacity{0.000000}%
 \pgfsetdash{}{0pt}%
 \pgfpathmoveto{\pgfqpoint{0.000000in}{0.000000in}}%
-\pgfpathlineto{\pgfqpoint{4.439114in}{0.000000in}}%
-\pgfpathlineto{\pgfqpoint{4.439114in}{0.314968in}}%
+\pgfpathlineto{\pgfqpoint{4.233955in}{0.000000in}}%
+\pgfpathlineto{\pgfqpoint{4.233955in}{0.314968in}}%
 \pgfpathlineto{\pgfqpoint{0.000000in}{0.314968in}}%
 \pgfpathclose%
 \pgfusepath{}%
@@ -78,7 +72,7 @@
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=1.257053in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont ABC}%
+\pgftext[x=1.257053in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont \(\displaystyle \gamma = \infty\)}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \pgfsetrectcap%
@@ -87,15 +81,15 @@
 \definecolor{currentstroke}{rgb}{0.172549,0.627451,0.172549}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{1.637709in}{0.133056in}}%
-\pgfpathlineto{\pgfqpoint{1.915487in}{0.133056in}}%
+\pgfpathmoveto{\pgfqpoint{1.730193in}{0.133056in}}%
+\pgfpathlineto{\pgfqpoint{2.007971in}{0.133056in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=2.026598in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont ABC SS}%
+\pgftext[x=2.119082in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont \(\displaystyle \gamma = \gamma^*\)}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \pgfsetrectcap%
@@ -104,15 +98,15 @@
 \definecolor{currentstroke}{rgb}{0.839216,0.152941,0.156863}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{2.639255in}{0.133056in}}%
-\pgfpathlineto{\pgfqpoint{2.917033in}{0.133056in}}%
+\pgfpathmoveto{\pgfqpoint{2.596806in}{0.133056in}}%
+\pgfpathlineto{\pgfqpoint{2.874584in}{0.133056in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=3.028144in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont MCMC}%
+\pgftext[x=2.985695in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont \(\displaystyle \gamma = 0\)}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \pgfsetbuttcap%
@@ -121,15 +115,15 @@
 \definecolor{currentstroke}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{{5.550000pt}{2.400000pt}}{0.000000pt}%
-\pgfpathmoveto{\pgfqpoint{3.594550in}{0.133056in}}%
-\pgfpathlineto{\pgfqpoint{3.872328in}{0.133056in}}%
+\pgfpathmoveto{\pgfqpoint{3.389391in}{0.133056in}}%
+\pgfpathlineto{\pgfqpoint{3.667169in}{0.133056in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=3.983439in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont True}%
+\pgftext[x=3.778280in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont True}%
 \end{pgfscope}%
 \end{pgfpicture}%
 \makeatother%
