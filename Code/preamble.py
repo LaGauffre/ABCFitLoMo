@@ -12,30 +12,19 @@ import os
 for env in ["MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS", "OMP_NUM_THREADS"]:
     os.environ[env] = "1"
 
-# Reminder that we need a relatively new version of numpy to make
-# use of the latest pseudorandom number generation algorithms.
 import numpy
-if int(numpy.__version__.split('.')[1]) < 17:
-    raise RuntimeError("Need Numpy version >= 1.17")
-
-# Similarly, we need a new version of scipy.stats to make
-# use of the latest gaussian_kde (where we can set the seed for resample).
-import scipy
-if int(scipy.__version__.split('.')[1]) < 4:
-    raise RuntimeError("Need Scipy version >= 1.4.0")
-
+import scipy # For gaussian_kde
 import matplotlib.pyplot as plt # For plotting
 import numpy as np # For fast math
 
 # New way to get pseudorandom numbers
 from numpy.random import SeedSequence, default_rng
-
 import numpy.random as rnd
 
 import dill
 
 # The main part of our code
-import abcre
+import approxbayescomp as abc
 
 import pandas as pd
 import seaborn as sns
@@ -64,6 +53,7 @@ plt.rcParams['figure.figsize'] = (5.0, 2.0)
 plt.rcParams['figure.dpi'] = 350
 plt.rcParams['savefig.bbox'] = "tight"
 plt.rcParams['font.family'] = "serif"
+plt.rcParams['pgf.texsystem'] = "pdflatex"
 
 # This is the default color scheme
 colors = [

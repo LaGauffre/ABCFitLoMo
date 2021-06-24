@@ -8,7 +8,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.10.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -18,44 +18,31 @@
 # # Simulation Study
 #
 
-%run -i ./preamble.py
-%run -i ./infer_loss_distribution.py
+# +
+from preamble import *
+from infer_loss_distribution import *
+
 %config InlineBackend.figure_format = 'retina'
-%load_ext nb_black
+%load_ext lab_black
 
 # +
-#dill.load_session("Sim_NegBin_Gamma.pkl")
+# dill.load_session("Sim_NegBin_Gamma.pkl")
 
 # +
 import sys
 
+print("ABC version:", abc.__version__)
 print("Python version:", sys.version)
 print("Numpy version:", np.__version__)
 print("PyMC3 version:", pm.__version__)
 print("Arviz version:", arviz.__version__)
 
 tic()
-
-# +
-FAST = False
-
-# Processor information and SMC calibration parameters
-if not FAST:
-    numIters = 7
-    numItersData = 10
-    popSize = 1000
-    epsMin = 0
-    timeout = 1000
-else:
-    numIters = 4
-    numItersData = 6
-    popSize = 500
-    epsMin = 1
-    timeout = 30
-
-smcArgs = {"timeout": timeout, "epsMin": epsMin, "verbose": True}
-smcArgs["numProcs"] = 64
 # -
+
+numIters = numItersData = 10
+popSize = 1000
+smcArgs = {"verbose": True, "numProcs": 40}
 
 # ## Inference of a Negative Binomial - Weibull model
 #
@@ -87,7 +74,7 @@ T = sample_sizes[-1]
 t = np.arange(1, T + 1, 1)
 
 # Frequency-Loss Model
-α, p, k, β = 4, 2/3, 1/3, 1
+α, p, k, β = 4, 2 / 3, 1 / 3, 1
 θ_True = α, p, k, β
 θ_sev = k, β
 θ_freq = α, p
@@ -96,9 +83,9 @@ sev = "weibull"
 
 # Aggregation process
 c = 0.25
-psi = abcre.Psi("GSL", c)
+psi = abc.Psi("GSL", c)
 
-freqs, sevs = abcre.simulate_claim_data(rg, T, freq, sev, θ_True)
+freqs, sevs = abc.simulate_claim_data(rg, T, freq, sev, θ_True)
 df_full = pd.DataFrame(
     {
         "time_period": np.concatenate([np.repeat(s, freqs[s - 1]) for s in t]),
@@ -106,7 +93,7 @@ df_full = pd.DataFrame(
     }
 )
 
-xData = abcre.compute_psi(freqs, sevs, psi)
+xData = abc.compute_psi(freqs, sevs, psi)
 
 df_agg = pd.DataFrame({"time_period": t, "N": freqs, "X": xData})
 # -
@@ -123,7 +110,7 @@ df_agg = pd.DataFrame({"time_period": t, "N": freqs, "X": xData})
 
 # +
 rg = default_rng(123)
-uData_10000 = abcre.simulate_claim_sizes(rg, 10000, sev, θ_sev)
+uData_10000 = abc.simulate_claim_sizes(rg, 10000, sev, θ_sev)
 r_mle, m_mle, BIC = infer_gamma(uData_10000, [1, 1])
 
 θ_plot = [α, p, np.NaN, np.NaN]
@@ -149,9 +136,7 @@ for ss in sample_sizes:
         %time trace = pm.sample_smc(popSize, random_seed=1, chains = 1)
         arviz.plot_posterior(trace)
 
-    res = pd.DataFrame(
-        {"ss": np.repeat(ss, popSize), "r": trace["r"], "m": trace["m"]}
-    )
+    res = pd.DataFrame({"ss": np.repeat(ss, popSize), "r": trace["r"], "m": trace["m"]})
     dfsev = pd.concat([dfsev, res])
 # -
 
@@ -170,9 +155,7 @@ for ss in sample_sizes:
         %time trace = pm.sample_smc(popSize, random_seed=1, chains = 1)
         arviz.plot_posterior(trace)
 
-    res = pd.DataFrame(
-        {"ss": np.repeat(ss, popSize), "α": trace["α"], "p": trace["p"]}
-    )
+    res = pd.DataFrame({"ss": np.repeat(ss, popSize), "α": trace["α"], "p": trace["p"]})
     dffreq = pd.concat([dffreq, res])
 
 
@@ -187,23 +170,27 @@ dftrue["posterior"] = np.repeat("True", len(dftrue))
 # ## ABC posterior for the negative-binomial-gamma model
 
 params = ("α", "p", "r", "m")
-prior = abcre.IndependentUniformPrior([(0, 10), (1e-3, 1), (0, 10), (0, 50)], params)
-model = abcre.Model("negative binomial", "gamma", psi, prior)
+prior = abc.IndependentUniformPrior([(0, 10), (1e-3, 1), (0, 10), (0, 50)], params)
+model = abc.Model("negative binomial", "gamma", psi, prior)
 
 # +
-dfABC = pd.DataFrame({'ss':[],'weights':[],'α':[],'p':[],'r':[],'m':[]})
+dfABC = pd.DataFrame({"ss": [], "weights": [], "α": [], "p": [], "r": [], "m": []})
 
 for ss in sample_sizes:
     xDataSS = df_agg.X[df_agg.time_period <= ss].to_numpy()
 
-    %time fit = abcre.smc(numIters, popSize, xDataSS, model, **smcArgs)
+    %time fit = abc.smc(numIters, popSize, xDataSS, model, **smcArgs)
 
-    res = pd.DataFrame({'ss':np.repeat(ss, popSize),
-                                     'weights': fit.weights,
-                                     'α': fit.samples[:,0],
-                                     'p': fit.samples[:,1],
-                                     'r': fit.samples[:,2],
-                                     'm': fit.samples[:,3]})
+    res = pd.DataFrame(
+        {
+            "ss": np.repeat(ss, popSize),
+            "weights": fit.weights,
+            "α": fit.samples[:, 0],
+            "p": fit.samples[:, 1],
+            "r": fit.samples[:, 2],
+            "m": fit.samples[:, 3],
+        }
+    )
 
     dfABC = pd.concat([dfABC, res])
 
@@ -219,7 +206,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
 
     axs[l].axvline(θ_plot[l], **trueStyle)
@@ -246,7 +233,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled = sample[abcre.resample(rg, weights, repeats=n_resample)]
+        dataResampled = sample[abc.resample(rg, weights, repeats=n_resample)]
         res_param = np.concatenate([res_param, dataResampled])
 
     resampled_post_ABC[params[l]] = res_param
@@ -270,13 +257,13 @@ for l in range(len(params)):
     plt.legend("", frameon=False)
 
 sns.despine()
-#save_cropped("../Figures/boxplot-test1-negbin-gamma.pdf")
+# save_cropped("../Figures/boxplot-test1-negbin-gamma.pdf")
 # -
 
 # ## ABC posterior for the gamma parameters with the claim frequency
 
 params = ("r", "m")
-prior = abcre.IndependentUniformPrior([(0, 10), (0, 50)], params)
+prior = abc.IndependentUniformPrior([(0, 10), (0, 50)], params)
 
 # +
 dfABC_freq = pd.DataFrame({"ss": [], "weights": [], "r": [], "m": []})
@@ -285,9 +272,9 @@ for ss in sample_sizes:
     xDataSS = df_agg.X[df_agg.time_period <= ss].to_numpy()
     nData = np.array(df_agg.N[df_agg.time_period <= ss])
 
-    model = abcre.Model(nData, "gamma", psi, prior)
+    model = abc.Model(nData, "gamma", psi, prior)
 
-    %time fit = abcre.smc(numItersData, popSize, xDataSS, model, **smcArgs)
+    %time fit = abc.smc(numItersData, popSize, xDataSS, model, **smcArgs)
 
     res = pd.DataFrame(
         {
@@ -314,13 +301,13 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
         axs[l].axvline(θ_gamma[l], **mleStyle)
         axs[l].set_title("$" + params[l] + f"\\in ({pLims[0]:.0f}, {pLims[1]:.0f})$")
         axs[l].set_yticks([])
 
-        
+
 sns.despine(left=True)
 # save_cropped("../Figures/hist-test1-negbin-gamma-freq.pdf")
 
@@ -331,21 +318,21 @@ alphas = (0.6, 1)
 
 for l in range(len(params)):
     pLims = [prior.marginals[l].isf(1), prior.marginals[l].isf(0)]
-    
+
     axs[l].axvline(θ_gamma[l], **mleStyle)
     axs[l].set_yticks([])
     for k, ss in enumerate(sample_sizes):
-        
+
         for j, df in enumerate((dfABC, dfABC_freq)):
             sampleData = df.query("ss == @ss")
             sample = sampleData[params[l]]
             weights = sampleData["weights"]
 
-            dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+            dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
             axs[l].plot(xs, ys, label="ABC", alpha=alphas[j], c=colors[k])
-            
+
             # axs[l].set_title("$" + params[l] + "$")
-            
+
 sns.despine(left=True)
 save_cropped("../Figures/hist-test1-negbin-gamma-both.pdf")
 
@@ -363,7 +350,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled = sample[abcre.resample(rg, weights, repeats=n_resample)]
+        dataResampled = sample[abc.resample(rg, weights, repeats=n_resample)]
         res_param = np.concatenate([res_param, dataResampled])
 
     resampled_post_ABC_freq[params[l]] = res_param
@@ -386,9 +373,10 @@ for l in range(len(params)):
     plt.legend("", frameon=False)
 
 sns.despine()
-#save_cropped("../Figures/boxplot-test1-negbin-gamma-freq.pdf")
+# save_cropped("../Figures/boxplot-test1-negbin-gamma-freq.pdf")
 # -
 elapsed = toc()
 print(f"Notebook time = {elapsed:.0f} secs = {elapsed/60:.2f} mins")
 
+# + tags=[]
 dill.dump_session("Sim_NegBin_Gamma.pkl")

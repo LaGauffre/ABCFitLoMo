@@ -8,7 +8,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.10.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -17,9 +17,11 @@
 
 # # Simulation Study
 
-%run -i ./preamble.py
+# +
+from preamble import *
+
 %config InlineBackend.figure_format = 'retina'
-%load_ext nb_black
+%load_ext lab_black
 
 # +
 # dill.load_session("Sim_Poisson_Depexp.pkl")
@@ -27,33 +29,18 @@
 # +
 import sys
 
+print("ABC version:", abc.__version__)
 print("Python version:", sys.version)
 print("Numpy version:", np.__version__)
 print("PyMC3 version:", pm.__version__)
 print("Arviz version:", arviz.__version__)
 
 tic()
-
-# +
-FAST = False
-
-# Processor information and SMC calibration parameters
-if not FAST:
-    numIters = 7
-    numItersData = 10
-    popSize = 1000
-    epsMin = 0
-    timeout = 1000
-else:
-    numIters = 5
-    numItersData = 10
-    popSize = 500
-    epsMin = 1
-    timeout = 30
-
-smcArgs = {"timeout": timeout, "verbose": True}
-smcArgs["numProcs"] = 64
 # -
+
+numIters = numItersData = 10
+popSize = 1000
+smcArgs = {"verbose": True, "numProcs": 40}
 
 # ## Inference of a Poison- Frequency Dependent Exponential model
 #
@@ -94,9 +81,9 @@ sev = "frequency dependent exponential"
 freq = "poisson"
 
 # Aggregation process
-psi = abcre.Psi("sum")
+psi = abc.Psi("sum")
 
-freqs, sevs = abcre.simulate_claim_data(rg, T, freq, sev, θ_True)
+freqs, sevs = abc.simulate_claim_data(rg, T, freq, sev, θ_True)
 df_full = pd.DataFrame(
     {
         "time_period": np.concatenate([np.repeat(s, freqs[s - 1]) for s in t]),
@@ -105,7 +92,7 @@ df_full = pd.DataFrame(
     }
 )
 
-xData = abcre.compute_psi(freqs, sevs, psi)
+xData = abc.compute_psi(freqs, sevs, psi)
 
 df_agg = pd.DataFrame({"time_period": t, "N": freqs, "X": xData})
 # -
@@ -139,7 +126,11 @@ for ss in sample_sizes:
         )
         %time trace = pm.sample_smc(popSize, random_seed=134, chains = 1)
         res = pd.DataFrame(
-            {"ss": np.repeat(ss, popSize), "β": trace["β"], "δ": trace["δ"],}
+            {
+                "ss": np.repeat(ss, popSize),
+                "β": trace["β"],
+                "δ": trace["δ"],
+            }
         )
 
     dfsev = pd.concat([dfsev, res])
@@ -174,8 +165,8 @@ dftrue["posterior"] = np.repeat("True", len(dftrue))
 # ## ABC posterior for the Poisson - frequency dependent exponential model
 
 params = ("λ", "β", "δ")
-prior = abcre.IndependentUniformPrior([(0, 10), (0, 20), (-1, 1)], params)
-model = abcre.Model("poisson", "frequency dependent exponential", psi, prior)
+prior = abc.IndependentUniformPrior([(0, 10), (0, 20), (-1, 1)], params)
+model = abc.Model("poisson", "frequency dependent exponential", psi, prior)
 
 # +
 dfABC = pd.DataFrame({"ss": [], "weights": [], "λ": [], "β": [], "δ": []})
@@ -183,7 +174,7 @@ dfABC = pd.DataFrame({"ss": [], "weights": [], "λ": [], "β": [], "δ": []})
 for ss in sample_sizes:
     xDataSS = df_agg.X[df_agg.time_period <= ss].to_numpy()
 
-    %time fit = abcre.smc(numIters, popSize, xDataSS, model, epsMin = epsMin, **smcArgs)
+    %time fit = abc.smc(numIters, popSize, xDataSS, model, **smcArgs)
 
     res = pd.DataFrame(
         {
@@ -198,7 +189,7 @@ for ss in sample_sizes:
     dfABC = pd.concat([dfABC, res])
 
 
-# +
+# + tags=[]
 fig, axs = plt.subplots(1, len(params), tight_layout=True)
 
 for l in range(len(params)):
@@ -210,7 +201,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
 
     axs[l].axvline(θ_True[l], **trueStyle)
@@ -220,8 +211,12 @@ for l in range(len(params)):
 draw_prior(prior, axs)
 sns.despine(left=True)
 save_cropped("../Figures/hist-test2-poisson-depexp.pdf")
+# -
 
-# +
+params = ("λ", "β", "δ")
+paramsTex = ("\\lambda", "\\beta", "\\delta")
+
+# + tags=[]
 fig, axs = plt.subplots(1, len(params), tight_layout=True)
 
 for l, param in enumerate(params):
@@ -233,7 +228,7 @@ for l, param in enumerate(params):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
 
         sns.distplot(
@@ -246,7 +241,7 @@ for l, param in enumerate(params):
 
     # axs[l].axvline(θ_True[l], **trueStyle)
     axs[l].plot(θ_True[l], 0, color="k", marker="|", markersize=10)
-    axs[l].set_title("$" + params[l] + f"\\in ({pLims[0]:.0f}, {pLims[1]:.0f})$")
+    axs[l].set_title("$" + paramsTex[l] + f"\\in ({pLims[0]:.0f}, {pLims[1]:.0f})$")
     axs[l].set_yticks([])
     axs[l].set_xlabel("")
 
@@ -254,7 +249,7 @@ axs[1].set_xlim([0, 5])
 axs[2].set_xlim([0, 0.5])
 
 sns.despine(left=True)
-# save_cropped("../Figures/hist-test2-poisson-depexp-approximate.pdf")
+save_cropped("../Figures-Slides/hist-test2-poisson-depexp-approximate.pdf")
 
 # +
 rg = default_rng(1)
@@ -271,7 +266,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled = sample[abcre.resample(rg, weights, repeats=n_resample)]
+        dataResampled = sample[abc.resample(rg, weights, repeats=n_resample)]
         res_param = np.concatenate([res_param, dataResampled])
 
     resampled_post_ABC[params[l]] = res_param
@@ -300,7 +295,7 @@ sns.despine()
 # ## ABC posterior for the dependent exponential parameters with the claim frequency
 
 params = ("β", "δ")
-prior = abcre.IndependentUniformPrior([(0, 20), (-1, 1)], params)
+prior = abc.IndependentUniformPrior([(0, 20), (-1, 1)], params)
 
 # +
 dfABC_freq = pd.DataFrame({"ss": [], "weights": [], "β": [], "δ": []})
@@ -309,9 +304,9 @@ for ss in sample_sizes:
     xDataSS = df_agg.X[df_agg.time_period <= ss].to_numpy()
     nData = np.array(df_agg.N[df_agg.time_period <= ss])
 
-    model = abcre.Model(nData, "frequency dependent exponential", psi, prior)
+    model = abc.Model(nData, "frequency dependent exponential", psi, prior)
 
-    %time fit = abcre.smc(numItersData, popSize, xDataSS, model, epsMin = epsMin, **smcArgs)
+    %time fit = abc.smc(numItersData, popSize, xDataSS, model, **smcArgs)
 
     res = pd.DataFrame(
         {
@@ -336,7 +331,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
 
     axs[l].axvline(θ_sev[l], **trueStyle)
@@ -359,7 +354,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
 
     axs[l].axvline(θ_sev[l], **trueStyle)
@@ -387,7 +382,7 @@ for l in range(len(params)):
             sample = sampleData[params[l]]
             weights = sampleData["weights"]
 
-            dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+            dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
             axs[l].plot(xs, ys, label="ABC", alpha=alphas[j], c=colors[k])
 
             # axs[l].set_title("$" + params[l] + "$")
@@ -409,7 +404,7 @@ for l in range(len(params)):
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled = sample[abcre.resample(rg, weights, repeats=n_resample)]
+        dataResampled = sample[abc.resample(rg, weights, repeats=n_resample)]
         res_param = np.concatenate([res_param, dataResampled])
 
     resampled_post_ABC_freq[params[l]] = res_param
@@ -437,4 +432,5 @@ sns.despine()
 elapsed = toc()
 print(f"Notebook time = {elapsed:.0f} secs = {elapsed/60:.2f} mins")
 
+# + tags=[]
 dill.dump_session("Sim_Poisson_Depexp.pkl")

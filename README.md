@@ -2,12 +2,11 @@
 
 The Code folder contains the Jupyter notebooks for the examples given in the paper.
 Each notebook is named after the corresponding section of the paper.
-Inside Code, there is also the version of our Python package [abcre](https://github.com/Pat-Laub/abcre) which was used at the time of writing the paper.
 All the generated plots in our paper are in the Figures folder.
 
 To run the notebooks, we recommend using [Anaconda](https://www.anaconda.com/products/individual) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html) to install the dependencies. 
 
-To install the packages required for the `abcre` library, use:
+To install the packages required for our [`approxbayescomp`](https://github.com/Pat-Laub/approxbayescomp) library, use:
 
 ```bash
 conda install joblib matplotlib numba numpy psutil scipy

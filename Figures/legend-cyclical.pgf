@@ -15,15 +15,11 @@
 %%   \import{<path to file>}{<filename>.pgf}
 %%
 %% Matplotlib used the following preamble
-%%   \usepackage{fontspec}
-%%   \setmainfont{DejaVuSerif.ttf}[Path=\detokenize{C:/Users/patri/miniconda3/Lib/site-packages/matplotlib/mpl-data/fonts/ttf/}]
-%%   \setsansfont{DejaVuSans.ttf}[Path=\detokenize{C:/Users/patri/miniconda3/Lib/site-packages/matplotlib/mpl-data/fonts/ttf/}]
-%%   \setmonofont{DejaVuSansMono.ttf}[Path=\detokenize{C:/Users/patri/miniconda3/Lib/site-packages/matplotlib/mpl-data/fonts/ttf/}]
 %%
 \begingroup%
 \makeatletter%
 \begin{pgfpicture}%
-\pgfpathrectangle{\pgfpointorigin}{\pgfqpoint{3.388328in}{0.314968in}}%
+\pgfpathrectangle{\pgfpointorigin}{\pgfqpoint{3.098865in}{0.304784in}}%
 \pgfusepath{use as bounding box, clip}%
 \begin{pgfscope}%
 \pgfsetbuttcap%
@@ -34,9 +30,9 @@
 \pgfsetstrokeopacity{0.000000}%
 \pgfsetdash{}{0pt}%
 \pgfpathmoveto{\pgfqpoint{0.000000in}{0.000000in}}%
-\pgfpathlineto{\pgfqpoint{3.388328in}{0.000000in}}%
-\pgfpathlineto{\pgfqpoint{3.388328in}{0.314968in}}%
-\pgfpathlineto{\pgfqpoint{0.000000in}{0.314968in}}%
+\pgfpathlineto{\pgfqpoint{3.098865in}{0.000000in}}%
+\pgfpathlineto{\pgfqpoint{3.098865in}{0.304784in}}%
+\pgfpathlineto{\pgfqpoint{0.000000in}{0.304784in}}%
 \pgfpathclose%
 \pgfusepath{}%
 \end{pgfscope}%
@@ -47,15 +43,15 @@
 \definecolor{currentstroke}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{0.055556in}{0.133056in}}%
-\pgfpathlineto{\pgfqpoint{0.333333in}{0.133056in}}%
+\pgfpathmoveto{\pgfqpoint{0.055556in}{0.131173in}}%
+\pgfpathlineto{\pgfqpoint{0.333333in}{0.131173in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=0.444444in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont Expected value for \(\displaystyle x_s\)}%
+\pgftext[x=0.444444in,y=0.082562in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont Expected value for \(\displaystyle x_s\)}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \pgfsetrectcap%
@@ -64,8 +60,8 @@
 \definecolor{currentstroke}{rgb}{0.121569,0.466667,0.705882}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{2.019346in}{0.133056in}}%
-\pgfpathlineto{\pgfqpoint{2.297124in}{0.133056in}}%
+\pgfpathmoveto{\pgfqpoint{1.835506in}{0.131173in}}%
+\pgfpathlineto{\pgfqpoint{2.113284in}{0.131173in}}%
 \pgfusepath{}%
 \end{pgfscope}%
 \begin{pgfscope}%
@@ -91,7 +87,7 @@
 \pgfusepath{stroke,fill}%
 }%
 \begin{pgfscope}%
-\pgfsys@transformshift{2.158235in}{0.133056in}%
+\pgfsys@transformshift{1.974395in}{0.131173in}%
 \pgfsys@useobject{currentmarker}{}%
 \end{pgfscope}%
 \end{pgfscope}%
@@ -99,7 +95,7 @@
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=2.408235in,y=0.084445in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont Observed \(\displaystyle x_s\)}%
+\pgftext[x=2.224395in,y=0.082562in,left,base]{\color{textcolor}\rmfamily\fontsize{10.000000}{12.000000}\selectfont Observed \(\displaystyle x_s\)}%
 \end{pgfscope}%
 \end{pgfpicture}%
 \makeatother%

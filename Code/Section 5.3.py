@@ -3,24 +3,28 @@
 # jupyter:
 #   jupytext:
 #     comment_magics: false
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.10.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
 
-%run -i ./preamble.py
+# +
+from preamble import *
+
 %config InlineBackend.figure_format = 'retina'
-%load_ext nb_black
+%load_ext lab_black
 
 # +
 import sys, pandas
 
+print("ABC version:", abc.__version__)
 print("Python version:", sys.version)
 print("Numpy version:", np.__version__)
 print("PyMC3 version:", pm.__version__)
@@ -28,22 +32,11 @@ print("Arviz version:", arviz.__version__)
 print("Pandas version:", pandas.__version__)
 
 tic()
+# -
 
-# +
-FAST = False
-
-# Processor information and SMC calibration parameters
-if not FAST:
-    numIters = 15
-    popSize = 1000
-    epsMin = 0
-else:
-    numIters = 5
-    popSize = 100
-    epsMin = 1
-
-smcArgs = {"epsMin": epsMin, "verbose": True}
-smcArgs["numProcs"] = 64
+numIters = 10
+popSize = 1000
+smcArgs = {"verbose": True, "numProcs": 40}
 
 # +
 rg = default_rng(123)
@@ -63,27 +56,27 @@ freq = "bivariate poisson"
 sev = "exponential"
 
 # Aggregation process
-psi = abcre.Psi("sum")
+psi = abc.Psi("sum")
 
-claimsData = abcre.simulate_claim_data(rg, T, freq, sev, θ_True)
+claimsData = abc.simulate_claim_data(rg, T, freq, sev, θ_True)
 
-xData1 = abcre.compute_psi(claimsData[0][0], claimsData[0][1], psi)
-xData2 = abcre.compute_psi(claimsData[1][0], claimsData[1][1], psi)
+xData1 = abc.compute_psi(claimsData[0][0], claimsData[0][1], psi)
+xData2 = abc.compute_psi(claimsData[1][0], claimsData[1][1], psi)
 
 xData = (xData1, xData2)
 # -
 
-prior = abcre.IndependentUniformPrior([(0, 2), (0, 50), (0, 50), (0, 100), (0, 100)])
-model = abcre.Model("bivariate poisson", "exponential", psi, prior)
+prior = abc.IndependentUniformPrior([(0, 2), (0, 50), (0, 50), (0, 100), (0, 100)])
+model = abc.Model("bivariate poisson", "exponential", psi, prior)
 
 # +
 params = ("sigma", "w1", "w2", "m1", "m2")
-dfABCOld = pd.DataFrame()
+dfABC = pd.DataFrame()
 
 for ss in sample_sizes:
     xDataSS = np.vstack([xData1[:ss], xData2[:ss]]).T
 
-    %time fit =  abcre.smc(numIters, popSize, xDataSS, model, sumstats=abcre.wass_2Ddist_ss, distance=abcre.wass_2Ddist, **smcArgs)
+    %time fit =  abc.smc(numIters, popSize, xDataSS, model, sumstats=abc.wass_2Ddist_ss, distance=abc.wass_2Ddist, **smcArgs)
 
     columns = {"ss": np.repeat(ss, popSize), "weights": fit.weights}
     for i, param in enumerate(params):
@@ -91,7 +84,7 @@ for ss in sample_sizes:
 
     res = pd.DataFrame(columns)
 
-    dfABCOld = pd.concat([dfABCOld, res])
+    dfABC = pd.concat([dfABC, res])
 
 # +
 fig, axs = plt.subplots(1, len(params), tight_layout=True)
@@ -101,11 +94,11 @@ for l in range(len(params)):
     # axs[l].set_xlim(pLims)
 
     for k, ss in enumerate(sample_sizes):
-        sampleData = dfABCOld.query("ss == @ss")
+        sampleData = dfABC.query("ss == @ss")
         sample = sampleData[params[l]]
         weights = sampleData["weights"]
 
-        dataResampled, xs, ys = abcre.resample_and_kde(sample, weights, clip=pLims)
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
         axs[l].plot(xs, ys, label="ABC")
 
     axs[l].axvline(θ_True[l], **trueStyle)
@@ -116,6 +109,28 @@ draw_prior(prior, axs)
 sns.despine(left=True)
 save_cropped("../Figures/hist-bivariate-poisson-exp.pdf")
 
+# +
+fig, axs = plt.subplots(1, len(params), tight_layout=True)
+
+for l in range(len(params)):
+    pLims = [prior.marginals[l].isf(1), prior.marginals[l].isf(0)]
+    # axs[l].set_xlim(pLims)
+
+    for k, ss in enumerate(sample_sizes):
+        sampleData = dfABC.query("ss == @ss")
+        sample = sampleData[params[l]]
+        weights = sampleData["weights"]
+
+        dataResampled, xs, ys = abc.resample_and_kde(sample, weights, clip=pLims)
+        axs[l].plot(xs, ys, label="ABC")
+
+    axs[l].axvline(θ_True[l], **trueStyle)
+    #     axs[l].set_title("$" + params[l] + "$")
+    axs[l].set_yticks([])
+
+draw_prior(prior, axs)
+sns.despine(left=True)
+save_cropped("../Figures/hist-bivariate-poisson-exp.pdf")
 # -
 
 elapsed = toc()

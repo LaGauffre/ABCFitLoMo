@@ -8,7 +8,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.10.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -17,18 +17,19 @@
 
 # # Simulation Study
 
-%run -i ./preamble.py
-%run -i ./infer_loss_distribution.py
-%run -i ./infer_count_distribution.py
+# +
+from preamble import *
+
 %config InlineBackend.figure_format = 'retina'
-%load_ext nb_black
+%load_ext lab_black
 
 # +
-#dill.load_session("Sim_Weibull_Gamma.pkl")
+# dill.load_session("Sim_Lognormal_Gamma.pkl")
 
 # +
 import sys
 
+print("ABC version:", abc.__version__)
 print("Python version:", sys.version)
 print("Numpy version:", np.__version__)
 print("PyMC3 version:", pm.__version__)
@@ -41,14 +42,12 @@ FAST = False
 
 # Processor information and SMC calibration parameters
 if not FAST:
-    numIters = 7
-    numItersData = 10
+    numItersData = 20
     popSize = 1000
     popSizeModels = 1000
     epsMin = 0
     timeout = 1000
 else:
-    numIters = 4
     numItersData = 8
     popSize = 500
     popSizeModels = 1000
@@ -61,59 +60,81 @@ smcArgs["numProcs"] = 40
 
 # ## Model selection
 #
-# In this notebook we are are conducting a simulation experiment where the claim frequency are Negative Binomial distributed 
+# We generate individual claim sizes from three models 
 #
-# $$
-# n_s\underset{\textbf{i.i.d.}}{\sim}\text{Neg-Bin}(\alpha = 4, p = 2/3),\text{ }s = 1,\ldots, 30
-# $$ 
+# - $\text{Weib}\left(k = 1/2,\beta =  e^{1/2}/ \Gamma(3/2)\right)$
+# - $\text{Gamma}(r = e^{1/2},m = 1)$
+# - $\text{LogNormal}(\mu = 0,\sigma = 1)$
 #
-# and the individual claim sizes are weibull distributed
-#
-# $$
-# u_1,\ldots, u_{n_s}\underset{\textbf{i.i.d.}}{\sim}\text{Weib}(k = 1/2, \beta = 1),\text{ }s = 1,\ldots 30.
-# $$ 
-#
-# The available data is aggregated claim sizes in excess of the priority $c=1$ asociated to aa global stop-loss treaty, we have 
-#
-# $$
-# x_s = \left(\sum_{k = 1}^{n_s}u_k-c\right)_{+},\text{ }s = 1,\ldots, t.
-# $$
-#
-# Our aim is to look into the finite sample performance of our ABC implementation when deciding which model is the most suited.
+# Samples of sizes $25, 50$ are considered
+
+# +
+from math import gamma
+
+np.exp(1 / 2) / gamma(3 / 2)
 
 # +
 rg = default_rng(123)
 
-sample_sizes = [50, 250]
+sample_sizes = [25, 50, 75, 100, 150, 200]
 T = sample_sizes[-1]
-t = np.arange(1, T + 1, 1)
 
-# Frequency-Loss Model
-α, p, k, β = 4, 2/3, 1/3, 1
-θ_True = α, p, k, β
-θ_sev = k, β
-θ_freq = α, p
-freq = "negative binomial"
-sev = "weibull"
-
-# Aggregation process
-c = 1
-psi = abcre.Psi("GSL", c)
-
-freqs, sevs = abcre.simulate_claim_data(rg, T, freq, sev, θ_True)
-df_full = pd.DataFrame(
+claim_data = pd.DataFrame(
     {
-        "time_period": np.concatenate([np.repeat(s, freqs[s - 1]) for s in t]),
-        "claim_size": sevs,
+        "lognormal": abc.simulate_claim_sizes(rg, T, "lognormal", (0, 1)),
+        "gamma": abc.simulate_claim_sizes(rg, T, "gamma", (np.exp(1 / 2), 1)),
+        "weibull": abc.simulate_claim_sizes(
+            rg, T, "weibull", (1 / 2, np.exp(1 / 2) / gamma(3 / 2))
+        ),
     }
 )
-
-xData = abcre.compute_psi(freqs, sevs, psi)
-
-df_agg = pd.DataFrame({"time_period": t, "N": freqs, "X": xData})
 # -
 
-[np.sum(xData[:ss] > 0) for ss in sample_sizes]
+# ## ABC posterior for choosing between lognormal, Weibull and gamma to model the claim sizes
+#
+# ### Lognormal data
+
+# +
+models_data = ["lognormal"]
+models_fitted = ["gamma", "lognormal", "weibull"]
+
+priorG = abc.IndependentUniformPrior([(0, 5), (0, 100)], ("r", "m"))
+modelG = abc.Model(sev="gamma", prior=priorG)
+
+priorL = abc.IndependentUniformPrior([(-20, 20), (0, 5)], ("μ", "σ"))
+modelL = abc.Model(sev="lognormal", prior=priorL)
+
+priorW = abc.IndependentUniformPrior([(1e-1, 5), (0, 100)], ("k", "δ"))
+modelW = abc.Model(sev="weibull", prior=priorW)
+
+models = [modelG, modelL, modelW]
+
+# +
+model_proba_abc = pd.DataFrame(
+    {"model_data": [], "model_fit": [], "ss": [], "model_probability_ABC": []}
+)
+
+# model_data = "lognormal"
+for model_data in models_data:
+    sevs = claim_data[model_data]
+    for ss in sample_sizes:
+        uData = sevs[:ss]
+        %time fit = abc.smc(numItersData, popSizeModels, uData, models, **smcArgs)
+        for k in range(len(models)):
+            weights = fit.weights[fit.models == k]
+            res_mp = pd.DataFrame(
+                {
+                    "model_data": pd.Series(model_data),
+                    "model_fit": pd.Series([models_fitted[k]]),
+                    "ss": np.array([ss]),
+                    "model_probability_ABC": pd.Series(
+                        np.sum(fit.weights[fit.models == k])
+                    ),
+                }
+            )
+            model_proba_abc = pd.concat([model_proba_abc, res_mp])
+            model_proba_abc
+# -
 
 # ## True posterior samples
 #
@@ -122,284 +143,134 @@ df_agg = pd.DataFrame({"time_period": t, "N": freqs, "X": xData})
 # ### Fitting a Weibull and a gamma model to the individual loss data
 
 # +
-Bayesian_Summary = pd.DataFrame({"model": [], "ss": [], "k": [], "β": []})
-models = ["True weibull", "True gamma"]
-for m in models:
-    for ss in sample_sizes:
-
-        uData = np.array(df_full.claim_size[df_full.time_period <= ss])
-        print("The number of individual claim sizes is ", len(uData))
-        if m == "True weibull":
-            # We fit a Weibull model using SMC
-            with pm.Model() as model_sev:
-                k = pm.Uniform("k", lower=1e-1, upper=10)
-                β = pm.Uniform("β", lower=0, upper=20)
-                U = pm.Weibull("U", alpha=k, beta=β, observed=uData)
-                %time trace = pm.sample_smc(popSize, random_seed=1, chains=1) 
-
-        elif m == "True gamma":
-            # We fit a gamma model using SMC
-            with pm.Model() as model_sev:
-                param1 = pm.Uniform("k", lower=0, upper=10)
-                param2 = pm.Uniform("β", lower=0, upper=50)
-                U = pm.Gamma("U", alpha=param1, beta=1 / param2, observed=uData)
-                %time trace = pm.sample_smc(popSize, random_seed=1, chains=1)
-
-        arviz.plot_posterior(trace)
-
-        log_lik = trace.report.log_marginal_likelihood[0]
-
-        res = pd.DataFrame(
-            {
-                "model": [m],
-                "ss": [ss],
-                "k": [trace["k"].mean()],
-                "β": [trace["β"].mean()],
-                "marginal_log_likelihood": [log_lik],
-            }
-        )
-        Bayesian_Summary = pd.concat([Bayesian_Summary, res])
-
-max_marginal_log_likelihood = (
-    Bayesian_Summary[["ss", "marginal_log_likelihood"]]
-    .groupby("ss")
-    .max()
-    .marginal_log_likelihood.values
-)
-max_marginal_log_likelihood = np.concatenate(
-    [max_marginal_log_likelihood, max_marginal_log_likelihood]
-)
-Bayesian_Summary["BF"] = np.exp(Bayesian_Summary.marginal_log_likelihood - max_marginal_log_likelihood)
-sum_BF = Bayesian_Summary[["ss", "BF"]].groupby("ss").sum().BF.values
-sum_BF = np.concatenate([sum_BF, sum_BF])
-Bayesian_Summary["model_probability"] = Bayesian_Summary.BF / sum_BF
-Bayesian_Summary
-
-# +
-# Frequency-Loss Model
-α, p, k, β = 4, 2 / 3, 1 / 3, 1
-rg = default_rng(123)
-uData_10000 = abcre.simulate_claim_sizes(rg, 10000, sev, θ_sev)
-r_mle, m_mle, BIC = infer_gamma(uData_10000, [1, 1])
-
-θ_plot = [[α, p, k, β], [α, p, np.NaN, np.NaN]]
-θ_mle = [[np.NaN, np.NaN, np.NaN, np.NaN], [np.NaN, np.NaN, r_mle, m_mle]]
-# -
-
-# ## ABC posterior for choosing between Weibull and gamma to model the claim sizes
-
-# +
-params = (("α", "p", "k", "β"), ("α", "p", "r", "m"))
-
-prior1 = abcre.IndependentUniformPrior([(0, 20), (1e-3, 1), (1e-1, 10), (0, 20)], params[0])
-model1 = abcre.Model("negative binomial", "weibull", psi, prior1)
-
-prior2 = abcre.IndependentUniformPrior([(0, 20), (1e-3, 1), (1e-1, 10), (0, 50)], params[1])
-model2 = abcre.Model("negative binomial", "gamma", psi, prior2)
-
-models = [model1, model2]
-model_names = ["ABC negative binomial - weibull", "ABC negative binomial - gamma"]
-
-# +
-model_proba_abc = pd.DataFrame({"model": [], "ss": [], "model_probability": []})
-dfabc = pd.DataFrame(
-    {"model": [], "ss": [], "weights": [], "α": [], "p": [], "param1": [], "param2": []}
-)
-
-for ss in sample_sizes:
-    xDataSS = df_agg.X[df_agg.time_period <= ss].values
-
-    %time fit = abcre.smc(numIters, popSizeModels, xDataSS, models, **smcArgs)
-
-    for k in range(len(models)):
-        weights = fit.weights[fit.models == k]
-        res_mp = pd.DataFrame(
-            {
-                "model": pd.Series([model_names[k]]),
-                "ss": np.array([ss]),
-                "model_probability": pd.Series(np.sum(fit.weights[fit.models == k])),
-            }
-        )
-
-        model_proba_abc = pd.concat([model_proba_abc, res_mp])
-
-        res_post_samples = pd.DataFrame(
-            {
-                "model": np.repeat(model_names[k], len(weights)),
-                "ss": np.repeat(ss, len(weights)),
-                "weights": weights / np.sum(weights),
-                "α": np.array(fit.samples)[fit.models == k, 0],
-                "p": np.array(fit.samples)[fit.models == k, 1],
-                "param1": np.array(fit.samples)[fit.models == k, 2],
-                "param2": np.array(fit.samples)[fit.models == k, 3],
-            }
-        )
-        dfabc = pd.concat([dfabc, res_post_samples])
-# -
-
-for l in range(len(models)):
-    fig, axs = plt.subplots(1, len(params[l]), tight_layout=True)
-    prior = models[l].prior
-
-    for k in range(len(params[l])):
-        pLims = [prior.marginals[k].isf(1), prior.marginals[k].isf(0)]
-        axs[k].set_xlim(pLims)
-
-        for i, ss in enumerate(sample_sizes):
-            selector = (dfabc.ss == ss) & (dfabc.model == model_names[l])
-            sample = np.array(dfabc[["α", "p", "param1", "param2"]])[selector, k]
-            weights = dfabc.weights[selector].values
-            dataResampled, xs, ys = abcre.resample_and_kde(
-                sample, weights / sum(weights), clip=pLims
-            )
-            axs[k].plot(xs, ys)
-            axs[k].axvline(θ_plot[l][k], **trueStyle)
-            axs[k].axvline(θ_mle[l][k], **mleStyle)
-
-            axs[k].set_title("$" + params[l][k] + "$")
-            axs[k].set_yticks([])
-            
-    sns.despine(left=True)
-    #plt.save_cropped(f"../Figures/hist-negbin-weibull-model-selection-{l}.pdf")
-
-# +
-params = (("k", "β"), ("r", "m"))
-
-prior1 = abcre.IndependentUniformPrior([(1e-1, 10), (0, 20)], params[0])
-prior2 = abcre.IndependentUniformPrior([(0, 10), (0, 50)], params[1])
-
-model_names = ("ABC with freqs - weibull", "ABC with freqs - gamma")
-
-# +
-model_proba_abc_freq = pd.DataFrame({"model": [], "ss": [], "model_probability": []})
-dfabc_freq = pd.DataFrame(
-    {"model": [], "ss": [], "weights": [], "param1": [], "param2": []}
-)
-
-for ss in sample_sizes:
-    xDataSS = df_agg.X[df_agg.time_period <= ss].values
-    nData = df_agg.N[df_agg.time_period <= ss].values
-
-    model1 = abcre.Model(nData, "weibull", psi, prior1)
-    model2 = abcre.Model(nData, "gamma", psi, prior2)
-    models = [model1, model2]
-
-    %time fit = abcre.smc(numItersData, popSizeModels, xDataSS, models, **smcArgs)
-
-    for k in range(len(models)):
-        weights = fit.weights[fit.models == k]
-        res_mp = pd.DataFrame(
-            {
-                "model": pd.Series([model_names[k]]),
-                "ss": np.array([ss]),
-                "model_probability": pd.Series(np.sum(fit.weights[fit.models == k])),
-            }
-        )
-
-        model_proba_abc_freq = pd.concat([model_proba_abc_freq, res_mp])
-
-        res_post_samples = pd.DataFrame(
-            {
-                "model": np.repeat(model_names[k], len(weights)),
-                "ss": np.repeat(ss, len(weights)),
-                "weights": weights / np.sum(weights),
-                "param1": np.array(fit.samples)[fit.models == k, 0],
-                "param2": np.array(fit.samples)[fit.models == k, 1],
-            }
-        )
-        dfabc_freq = pd.concat([dfabc_freq, res_post_samples])
-# -
-
-
-for l in range(len(models)):
-    modelName = model_names[l]
-    prior = models[l].prior
-    fig, axs = plt.subplots(1, len(params[l]), tight_layout=True)
-
-    for k in range(len(params[l])):
-        pLims = [prior.marginals[k].isf(1), prior.marginals[k].isf(0)]
-        # axs[k].set_xlim(pLims)
-
-        for ss in sample_sizes:
-            sampleData = dfabc_freq.query("ss == @ss & model == @modelName")
-            selector = (dfabc_freq.ss == ss) & (dfabc_freq.model == model_names[l])
-            sample = np.array(dfabc_freq[["param1", "param2"]])[selector, k]
-            weights = dfabc_freq.weights[selector].values
-            if sampleData.shape[0] > 1:
-                dataResampled, xs, ys = abcre.resample_and_kde(
-                    sample, weights / sum(weights), clip=pLims
-                )
-                axs[k].plot(xs, ys)
-
-            axs[k].axvline(θ_plot[l][k + 2], **trueStyle)
-            axs[k].axvline(θ_mle[l][k + 2], **mleStyle)
-
-            axs[k].set_title(
-               "$" + params[l][k] + f"\\in ({pLims[0]:.0f}, {pLims[1]:.0f})$"
-            )
-            axs[k].set_yticks([])
-
-    sns.despine(left=True)
-    #plt.save_cropped(f"../Figures/hist-freqs-weibull-model-selection-{l}.pdf")
-# +
-model_proba_df = pd.concat(
-    [
-        Bayesian_Summary[["model", "ss", "model_probability"]],
-        model_proba_abc,
-        model_proba_abc_freq,
-    ]
-)
-model_proba_df = model_proba_df[
-    np.char.find(model_proba_df.model.tolist(), "weibull") > -1
-]
-
-model_proba_df.model = model_proba_df.model.replace(
+Bayesian_Summary = pd.DataFrame(
     {
-        "True weibull": "True\n(w/ $N$'s, $U$'s)",
-        "ABC negative binomial - weibull": "ABC\n(w/ $X$'s)",
-        "ABC with freqs - weibull": "ABC\n(w/ $X$'s, $N$'s)",
+        "model_data": [],
+        "model_fit": [],
+        "ss": [],
+        "param_1": [],
+        "param_2": [],
+        "marginal_log_likelihood": [],
     }
 )
 
-model_proba_df = model_proba_df.sort_values("model")
+for model_data in models_data:
+    sevs = claim_data[model_data]
+    for model_fitted in models_fitted:
 
-fig, ax = plt.subplots(1, 1, tight_layout=True)
+        for ss in sample_sizes:
+            uData = sevs[:ss]
+            print(
+                f"Fitting a {model_fitted} model to {len(uData)} data points generated from a {model_data} model"
+            )
 
-g = sns.barplot(
-    x="model",
-    y="model_probability",
-    hue="ss",
-    data=model_proba_df,
-    #     legend=False,
-    ax=ax,
-)
-plt.legend([], frameon=False)
-plt.ylabel("")
-plt.xlabel("")
-plt.title("")
+            if model_fitted == "gamma":
+                with pm.Model() as model_sev:
+                    r = pm.Uniform("param_1", lower=0, upper=5)
+                    m = pm.Uniform("param_2", lower=0, upper=100)
+                    U = pm.Gamma("U", alpha=r, beta=1 / m, observed=uData)
+                    %time trace = pm.sample_smc(popSize, random_seed=1, chains=1)
 
-sns.despine()
-#save_cropped("../Figures/barplot-negbin-weibull-model-selection.pdf")
+            elif model_fitted == "lognormal":
+                with pm.Model() as model_sev:
+                    μ = pm.Uniform("param_1", lower=-20, upper=20)
+                    σ = pm.Uniform("param_2", lower=0, upper=5)
+                    U = pm.Lognormal("U", mu=μ, sigma=σ, observed=uData)
+                    %time trace = pm.sample_smc(popSize, random_seed=1, chains=1)
+
+            elif model_fitted == "weibull":
+                with pm.Model() as model_sev:
+                    k = pm.Uniform("param_1", lower=1e-1, upper=5)
+                    δ = pm.Uniform("param_2", lower=0, upper=100)
+                    U = pm.Weibull("U", alpha=k, beta=δ, observed=uData)
+                    %time trace = pm.sample_smc(popSize, random_seed=1, chains=1)
+
+            ll = trace.report.log_marginal_likelihood[0]
+
+            res = pd.DataFrame(
+                {
+                    "model_data": [model_data],
+                    "model_fit": [model_fitted],
+                    "ss": [ss],
+                    "param_1": [trace["param_1"].mean()],
+                    "param_2": [trace["param_2"].mean()],
+                    "marginal_log_likelihood": [ll],
+                }
+            )
+            Bayesian_Summary = pd.concat([Bayesian_Summary, res])
+
+
 # -
-model_proba_df = pd.concat(
-    [
-        Bayesian_Summary[["model", "ss", "model_probability"]],
-        model_proba_abc,
-        model_proba_abc_freq,
-    ]
+
+Bayesian_Summary
+
+# +
+max_marginal_log_likelihood = (
+    Bayesian_Summary[["model_data", "ss", "marginal_log_likelihood"]]
+    .groupby(["model_data", "ss"])
+    .max()
 )
+max_marginal_log_likelihood.reset_index(level=["model_data", "ss"], inplace=True)
+max_marginal_log_likelihood.rename(
+    columns={"marginal_log_likelihood": "max_marginal_log_likelihood"}
+)
+
+Bayesian_Summary_1 = pd.merge(
+    Bayesian_Summary, max_marginal_log_likelihood, how="left", on=["model_data", "ss"]
+)
+Bayesian_Summary_1
+
+Bayesian_Summary_1["BF"] = np.exp(
+    Bayesian_Summary_1.marginal_log_likelihood_x
+    - Bayesian_Summary_1.marginal_log_likelihood_y
+)
+
+Bayesian_Summary_1
+sum_BF = (
+    Bayesian_Summary_1[["ss", "model_data", "BF"]].groupby(["ss", "model_data"]).sum()
+)
+sum_BF.reset_index(level=["model_data", "ss"], inplace=True)
+
+Bayesian_Summary_2 = pd.merge(
+    Bayesian_Summary_1, sum_BF, how="left", on=["model_data", "ss"]
+)
+Bayesian_Summary_2
+Bayesian_Summary_2["model_probability"] = (
+    Bayesian_Summary_2.BF_x / Bayesian_Summary_2.BF_y
+)
+Bayesian_Summary_2
+
+# +
+# # Frequency-Loss Model
+# α, p, k, β = 4, 2 / 3, 1 / 3, 1
+# rg = default_rng(123)
+# uData_10000 = abc.simulate_claim_sizes(rg, 10000, sev, θ_sev)
+# r_mle, m_mle, BIC = infer_gamma(uData_10000, [1, 1])
+
+# θ_plot = [[α, p, k, β], [α, p, np.NaN, np.NaN]]
+# θ_mle = [[np.NaN, np.NaN, np.NaN, np.NaN], [np.NaN, np.NaN, r_mle, m_mle]]
+# -
+
+model_proba = pd.merge(
+    Bayesian_Summary_2[["model_data", "model_fit", "ss", "model_probability"]],
+    model_proba_abc,
+    how="left",
+    on=["model_data", "model_fit", "ss"],
+).round(2)
+model_proba
+
+
 print(
     pd.pivot_table(
-        model_proba_df,
-        values="model_probability",
+        model_proba,
+        values=["model_probability", "model_probability_ABC"],
         index=["ss"],
-        columns=["model"],
-        aggfunc=np.sum,
+        columns=["model_fit"],
+        aggfunc={"model_probability": np.mean, "model_probability_ABC": np.mean},
     ).to_latex()
 )
-
 
 elapsed = toc()
 print(f"Notebook time = {elapsed:.0f} secs = {elapsed/60:.2f} mins")
 
-dill.dump_session("Sim_Weibull_Gamma.pkl")
+dill.dump_session("Sim_Lognormal_Gamma.pkl")
